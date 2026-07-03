@@ -1,0 +1,17 @@
+# Coogaih ownership split — GitHub auto-requests review based on this file.
+# Replace @friend-github-username with his actual handle.
+
+# Your territory — you're the default owner of everything not listed below
+*                       @R3X06
+
+# His territory
+/focus-engine/          @friend-github-username
+/tests/                 @friend-github-username
+/.github/workflows/     @friend-github-username
+
+# Shared contract docs — BOTH of you must review any change to these.
+# This is the important line: it's the only place collisions should
+# ever happen, and CODEOWNERS makes sure neither of you can merge
+# a contract change solo.
+/docs/DATA_CONTRACT.md  @R3X06 @friend-github-username
+/docs/API_CONTRACT.md   @R3X06 @friend-github-username

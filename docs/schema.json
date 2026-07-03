@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coogaih.dev/schema/event-envelope-v1.json",
+  "title": "Coogaih Normalized Event Envelope",
+  "description": "Matches DATA_CONTRACT.md v1.0 — every producer (window_watcher, browser_ext, afk_watcher, manual_client, simulator) emits events in this shape.",
+  "type": "object",
+  "required": ["schema_version", "event_id", "ts", "local_offset_min", "source", "kind", "duration_ms", "category", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "event_id": { "type": "string", "format": "uuid" },
+    "ts": { "type": "string", "format": "date-time" },
+    "local_offset_min": { "type": "integer", "minimum": -720, "maximum": 840 },
+    "source": { "type": "string", "enum": ["window_watcher", "browser_ext", "afk_watcher", "manual_client", "simulator"] },
+    "kind": { "type": "string", "enum": ["focus", "browse", "afk", "manual_log"] },
+    "duration_ms": { "type": ["integer", "null"], "minimum": 0 },
+    "category": { "type": ["string", "null"], "enum": ["study", "work", "distraction", "neutral", null] },
+    "payload": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "comment": "kind == focus: span event, payload = focus fields",
+      "if": { "properties": { "kind": { "const": "focus" } } },
+      "then": {
+        "properties": {
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "payload": {
+            "type": "object",
+            "required": ["app", "window_title"],
+            "additionalProperties": false,
+            "properties": {
+              "app": { "type": "string", "minLength": 1 },
+              "window_title": { "type": "string" },
+              "executable": { "type": "string" },
+              "pid": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "comment": "kind == browse: span event, payload = browse fields",
+      "if": { "properties": { "kind": { "const": "browse" } } },
+      "then": {
+        "properties": {
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "payload": {
+            "type": "object",
+            "required": ["domain", "page_title"],
+            "additionalProperties": false,
+            "properties": {
+              "domain": { "type": "string", "minLength": 1 },
+              "page_title": { "type": "string" },
+              "url_hash": { "type": "string" },
+              "tab_id": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "comment": "kind == afk: span event, payload = afk fields",
+      "if": { "properties": { "kind": { "const": "afk" } } },
+      "then": {
+        "properties": {
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "payload": {
+            "type": "object",
+            "required": ["reason"],
+            "additionalProperties": false,
+            "properties": {
+              "reason": { "type": "string", "enum": ["idle"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "comment": "kind == manual_log: instantaneous event, duration_ms must be null",
+      "if": { "properties": { "kind": { "const": "manual_log" } } },
+      "then": {
+        "properties": {
+          "duration_ms": { "type": "null" },
+          "payload": {
+            "type": "object",
+            "required": ["concept", "confidence", "perceived_difficulty", "outcome"],
+            "additionalProperties": false,
+            "properties": {
+              "concept": { "type": "string", "minLength": 1 },
+              "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+              "perceived_difficulty": { "type": "integer", "minimum": 1, "maximum": 5 },
+              "outcome": { "type": "string", "enum": ["correct", "incorrect", "partial", "na"] },
+              "refers_to_session": { "type": "string" },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

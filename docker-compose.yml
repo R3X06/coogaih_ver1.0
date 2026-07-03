@@ -1,0 +1,41 @@
+# Coogaih — local dev environment
+# Run: docker compose up
+#
+# This is the shared integration point. Instead of guessing whether your
+# API and his engine agree, you both point at this and test against a real
+# running instance.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: coogaih
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./backend/app/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - coogaih_pgdata:/var/lib/postgresql/data
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/coogaih
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  # Friend adds his service here once focus-engine/ exists, pointed at
+  # http://api:8000 for its POST /ingest/session-metrics calls.
+  # focus-engine:
+  #   build: ./focus-engine
+  #   environment:
+  #     API_URL: http://api:8000
+  #   depends_on:
+  #     - api
+
+volumes:
+  coogaih_pgdata:
