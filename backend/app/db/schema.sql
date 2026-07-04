@@ -1,6 +1,8 @@
 -- Coogaih — Postgres/Supabase schema (v1)
 -- Locked Week 0. Matches DATA_CONTRACT.md event envelope and the
 -- /ingest/session-metrics payload in API_CONTRACT.md.
+-- Reflects migration 001 (RISK_CONTRACT.md v1.0): manual_logs.outcome enum,
+-- manual_logs.concept, and sessions risk provenance columns.
 
 create extension if not exists "pgcrypto"; -- for gen_random_uuid()
 
@@ -20,6 +22,10 @@ create table if not exists users (
 -- One row per study session. Populated by POST /ingest/session-metrics,
 -- which is called by the Focus-State Engine (friend's service) — never
 -- written to directly by his engine.
+--
+-- risk_score / risk_computed_at / risk_detail are set later by the cognitive
+-- engine's risk pass (RISK_CONTRACT.md), never at ingest, and are frozen once
+-- written (freeze-at-compute).
 -- ---------------------------------------------------------------------------
 create table if not exists sessions (
     id                          uuid primary key default gen_random_uuid(),
@@ -33,8 +39,10 @@ create table if not exists sessions (
     fragmentation               double precision check (fragmentation between 0 and 1),
     distraction_ratio           double precision check (distraction_ratio between 0 and 1),
 
-    -- populated later by the cognitive engine (calibration/drift/risk) — nullable at ingest time
+    -- populated later by the cognitive engine (RISK_CONTRACT.md) — nullable at ingest time
     risk_score                  double precision check (risk_score between 0 and 1),
+    risk_computed_at            timestamptz,   -- when risk_score was frozen; null = never computed
+    risk_detail                 jsonb,         -- frozen inputs/provenance (see RISK_CONTRACT.md §6)
 
     created_at                  timestamptz not null default now()
 );
@@ -63,16 +71,21 @@ create index if not exists idx_raw_events_session on raw_events(session_id);
 -- ---------------------------------------------------------------------------
 -- manual_logs
 -- User-entered confidence + outcome. This is the sole source of the
--- calibration metric (ECE/Brier) — keep it decoupled from sessions so a
--- log can exist without a session and vice versa.
+-- calibration metric (ECE/Brier) and of the risk_score target event
+-- (RISK_CONTRACT.md) — keep it decoupled from sessions so a log can exist
+-- without a session and vice versa.
+--
+-- `outcome` and `concept` match the manual_log payload in DATA_CONTRACT.md /
+-- schema.json. A log is an immutable event: outcome is fixed at emit time,
+-- not resolved later. `na` = a check-in with no assessment; null = absent.
 -- ---------------------------------------------------------------------------
 create table if not exists manual_logs (
     id          uuid primary key default gen_random_uuid(),
     user_id     uuid not null references users(id) on delete cascade,
     session_id  uuid references sessions(id) on delete set null,
-    topic       text,
+    concept     text,
     confidence  double precision not null check (confidence between 0 and 1),
-    outcome     boolean, -- null until resolved
+    outcome     text check (outcome is null or outcome in ('correct', 'incorrect', 'partial', 'na')),
     created_at  timestamptz not null default now()
 );
 
