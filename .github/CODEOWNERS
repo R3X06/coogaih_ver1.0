@@ -1,7 +1,8 @@
 # Coogaih ownership split — GitHub auto-requests review based on this file.
-# Replace @friend-github-username with his actual handle.
 
-# Your territory — you're the default owner of everything not listed below
+# Your territory — you're the default owner of everything not listed below.
+# This covers docs/RISK_CONTRACT.md, backend/app/engine/, and db/migrations/:
+# risk is your cognitive engine's territory, reviewed solo.
 *                       @R3X06
 
 # His territory
