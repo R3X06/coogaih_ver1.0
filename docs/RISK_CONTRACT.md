@@ -53,19 +53,43 @@ old session's inputs change is a **late-arriving log** that refers back to a
 session inside its window; §6 (freeze) handles that case explicitly.
 
 ---
+## 3. The formula (locked)
 
-**Drift amplification.** A deteriorating trend raises present risk:
+Only **assessable** logs count: `outcome IN ('correct', 'incorrect', 'partial')`.
+Logs with `outcome = 'na'` or null are excluded (nothing to calibrate against).
+
+**Correctness score** per assessable log:
 
 ```
-risk_score = clamp( calibration_risk · (1 + DRIFT_BUMP · drift_severity), 0, 1 )
+correct → 1.0     partial → 0.5     incorrect → 0.0
 ```
 
-`drift_severity ∈ [0,1]` is the engine's normalized drift statistic
-(CUSUM / Page-Hinkley) on the trailing correctness stream; 0 = stable, 1 = max
-detected drift. Its internals are the engine's business; only this interface is
-contractual.
+`partial` counts as **half-wrong** — a deliberate choice, not a default.
 
---- WITH THIS ---
+**Overconfidence-only calibration error (OCE).** Standard ECE binning over the
+stated `confidence` (`N_BINS = 10`), but keeping only the *overconfident*
+direction — underconfidence (humble and right) is not a risk and must not be
+penalized:
+
+```
+For each confidence bin b:
+    conf_b = mean stated confidence in b
+    acc_b  = mean correctness score in b
+    n_b    = count in b
+OCE = Σ_b (n_b / N) · max(conf_b − acc_b, 0)      # only the overconfident excess
+```
+
+**Normalization against two reference distributions** (NOT a single hardcoded
+divisor — see §5 for why that fails):
+
+```
+calibration_risk = clamp( (OCE − OCE_FLOOR) / (OCE_MAX − OCE_FLOOR), 0, 1 )
+```
+
+- `OCE_FLOOR` = the noise band: p90 of OCE on a **well-calibrated** reference
+  corpus. Below this, OCE is indistinguishable from ordinary binning noise → risk 0.
+- `OCE_MAX` = the "clearly bad" ceiling: p95 of OCE on a deliberately
+  **overconfident** reference corpus.
 
 **Drift amplification.** A deteriorating trend raises present risk:
 
@@ -79,12 +103,12 @@ are the engine's business; only this interface is contractual — an
 implementation may be swapped without a contract version bump, provided the
 interface holds.
 
-*Implementation status (see decision log ADR-003):*
+*Implementation status (see decision log, drift_severity entry):*
 
 - **v1 (current, interim): one-sided Page-Hinkley** over the trailing
   wrongness stream (`1 − correctness`), normalized against empirically
   calibrated floor/ceiling constants (same discipline as `OCE_FLOOR`/
-  `OCE_MAX` in §5) — see `drift_severity.py`.
+  `OCE_MAX` above) — see `drift_severity.py`.
 - **Target: BOCPD** (Bayesian Online Change Point Detection). Chosen over
   CUSUM/Page-Hinkley because student data is sparse and bursty, and
   calibration against the v1 implementation surfaced two concrete failure
@@ -96,6 +120,15 @@ interface holds.
 - Migration from v1 to v2 changes only `drift_severity()`'s internals; no
   change to `risk_score`, `risk_ref.py`, or this contract's public interface
   is required.
+
+**Cold-start:**
+
+```
+if N < N_MIN:  risk_score = NULL
+```
+
+NULL, never 0 — 0 reads as "safe," which is a lie when the truth is "not enough
+data." The `sessions.risk_score` column is nullable precisely for this.
 
 ---
 
