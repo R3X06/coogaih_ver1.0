@@ -53,7 +53,6 @@ old session's inputs change is a **late-arriving log** that refers back to a
 session inside its window; §6 (freeze) handles that case explicitly.
 
 ---
-
 ## 3. The formula (locked)
 
 Only **assessable** logs count: `outcome IN ('correct', 'incorrect', 'partial')`.
@@ -98,10 +97,29 @@ calibration_risk = clamp( (OCE − OCE_FLOOR) / (OCE_MAX − OCE_FLOOR), 0, 1 )
 risk_score = clamp( calibration_risk · (1 + DRIFT_BUMP · drift_severity), 0, 1 )
 ```
 
-`drift_severity ∈ [0,1]` is the engine's normalized drift statistic
-(CUSUM / Page-Hinkley) on the trailing correctness stream; 0 = stable, 1 = max
-detected drift. Its internals are the engine's business; only this interface is
-contractual.
+`drift_severity ∈ [0,1]` is the engine's normalized drift statistic on the
+trailing correctness stream; 0 = stable, 1 = max detected drift. Its internals
+are the engine's business; only this interface is contractual — an
+implementation may be swapped without a contract version bump, provided the
+interface holds.
+
+*Implementation status (see decision log, drift_severity entry):*
+
+- **v1 (current, interim): one-sided Page-Hinkley** over the trailing
+  wrongness stream (`1 − correctness`), normalized against empirically
+  calibrated floor/ceiling constants (same discipline as `OCE_FLOOR`/
+  `OCE_MAX` above) — see `drift_severity.py`.
+- **Target: BOCPD** (Bayesian Online Change Point Detection). Chosen over
+  CUSUM/Page-Hinkley because student data is sparse and bursty, and
+  calibration against the v1 implementation surfaced two concrete failure
+  modes: (a) a sharp break can be missed entirely when too few samples
+  follow it within the trailing window, and (b) gradual decline is
+  under-detected relative to abrupt breaks. Both are expected weaknesses of
+  Page-Hinkley, not implementation bugs — they are the reason BOCPD remains
+  the target rather than a stretch nicety.
+- Migration from v1 to v2 changes only `drift_severity()`'s internals; no
+  change to `risk_score`, `risk_ref.py`, or this contract's public interface
+  is required.
 
 **Cold-start:**
 
