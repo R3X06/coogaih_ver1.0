@@ -193,14 +193,19 @@ and the category rules list. **Decide simulator ownership** (see open decisions)
 
 **Then parallel:**
 
-*You:* DB + API skeleton (done) → **simulator** (now critical path — build first) →
-risk engine with shrinkage → ITS impact scoring → structured retrieval + LLM debrief →
-extension + categorizer wiring → one dashboard screen → Docker. *(BOCPD drift =
-stretch.)*
+*You (current):* DB + API skeleton (done) → **simulator (critical path — IN
+PROGRESS)** → live DB + migration 001 executed → engine pass wiring
+`risk_ref.py` + `drift_severity.py` to write a real `risk_score` row → ITS
+impact scoring → structured retrieval + LLM debrief → extension + categorizer
+wiring → one dashboard screen → Docker.
 
-*Friend:* event simulator + ground-truth cases → Focus-State Engine to pass them → live
-classifier → wire to `/ingest/session-metrics` → cross-system test suite + CI as each
-piece lands.
+*Friend:* NOT STARTED as of 2026-07-15 — `focus-engine/`, `tests/`, and
+`.github/workflows/` are all empty on `main`. This is the largest single risk
+to the two-service demo and needs a timeline conversation, not a nudge.
+
+**Honest status (2026-07-21):** zero of the five v1 spine stages are complete.
+Contracts, reference implementations, and process docs are ahead of the code
+by a wide margin. Design work is paused until the spine runs end to end.
 
 **Integration moment:** his engine POSTs real metrics to your live API; you swap
 simulator-fed metrics for real ones. Your cognitive engine doesn't care about the
@@ -236,12 +241,15 @@ source — that's the seam working.
 
 ## MVP boundaries
 
-**In v1:** browser-only capture · on-device categorization · manual log · batch metrics
-+ live classifier · risk score with shrinkage + uncertainty · ITS recommendation impact
-· grounded LLM debrief over structured retrieval · one dashboard screen · CI with
-contract + property tests.
+**In v1:** browser-only capture · on-device categorization · manual log · batch
+metrics + live classifier · risk score (OCE + interim Page-Hinkley drift, NULL
+on cold-start per `RISK_CONTRACT.md` §3) · ITS recommendation impact · grounded
+LLM debrief over structured retrieval · one dashboard screen · CI with contract
++ property tests.
 
-**Stretch (build if time):** BOCPD drift detection · live randomized-delay causal design.
+**Stretch (build if time):** hierarchical shrinkage + uncertainty band (replaces
+the hard `N_MIN` NULL gate) · BOCPD drift detection · live randomized-delay
+causal design.
 
 **Documented-only (designed, not shipped):** full randomized-withholding experiment ·
 CUSUM baseline comparison.
