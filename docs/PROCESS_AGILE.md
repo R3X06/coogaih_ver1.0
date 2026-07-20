@@ -52,12 +52,11 @@ Checkpoints you both look at together — not calendar deadlines.
 
 | Milestone | Status |
 |---|---|
-| M0 — Contracts locked (`DATA_CONTRACT.md`, `API_CONTRACT.md`) | Done |
-| M1 — Backend scaffold (schema, FastAPI, Docker) | Done |
-| M2 — Core engines (cognitive engine + Focus-State Engine) | In progress |
-| M3 — LLM + RAG layer | Next |
-| M4 — Dashboard + demo integration | Next |
-
+| M0 — Contracts locked (`DATA_CONTRACT`, `API_CONTRACT`, `RISK_CONTRACT`) | Done |
+| M1 — Backend scaffold (schema, FastAPI, Docker) | Code done; **never run against live Postgres** |
+| M2 — Core engines (cognitive + Focus-State) | Cognitive: reference impls exist, not wired. Focus-State: **not started** |
+| M3 — Simulator + end-to-end spine | **Critical path, in progress** |
+| M4 — LLM layer · dashboard · demo integration | Next |
 ---
 
 ## 4. Definition of Done
@@ -80,9 +79,12 @@ it "feels finished."
 
 ## 5. Decision log (ADR-lite)
 
-**Rule:** no constant or contract change merges without a decision log entry.
-This turns the CODEOWNERS-enforced review from "someone approved it" into
-"someone approved it *and we know why*."
+**Rule (extended 2026-07-21):** no constant or contract change merges without a
+decision log entry — **and no change to the build order in `plan.md` happens
+without one either.** Sequencing drift is the failure mode this project actually
+has: the simulator was declared critical path on 2026-07-04 and silently
+deprioritized for 17 days in favor of contract and process work. Constants were
+governed; sequencing wasn't.
 
 **Template** (one entry per change, kept in the Notion Decisions Log — not
 duplicated into `docs/`, which stays the enforced source of truth for the

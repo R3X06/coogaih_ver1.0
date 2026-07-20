@@ -134,22 +134,34 @@ data." The `sessions.risk_score` column is nullable precisely for this.
 
 ## 4. Reference behavior (from the validated reference implementation)
 
-Directional check the engine's implementation must reproduce (monotone, zeros
-where they belong):
+Directional check the engine's implementation must reproduce. Each row is the
+**median over 2000 independent 20-log draws** of that persona, with a p10–p90
+band. A single draw is an anecdote, not reference behavior: `OCE_FLOOR` is
+calibrated to p90 of a well-calibrated corpus, so ~10% of good learners score
+above zero on any one draw. Reproduce with `python risk_ref.py`.
 
-| learner pattern                    | risk_score |
-|------------------------------------|-----------:|
-| well-calibrated (conf ≈ accuracy)  |       0.00 |
-| **under**confident (humble, right) |       0.00 |
-| mildly overconfident               |       ~0.36 |
-| confidently-wrong                  |       ~0.47 |
-| confidently-wrong + drifting       |       ~0.98 |
-| < N_MIN assessable logs            |       NULL |
+| learner pattern                    | risk_score | p10–p90     |
+|------------------------------------|-----------:|------------:|
+| well-calibrated (conf ≈ accuracy)  |       0.00 | 0.00 – 0.00 |
+| **under**confident (humble, right) |       0.00 | 0.00 – 0.00 |
+| mildly overconfident               |       0.08 | 0.00 – 0.27 |
+| confidently-wrong                  |       0.77 | 0.58 – 0.94 |
+| confidently-wrong + drifting (0.8) |       0.92 | 0.69 – 1.00 |
+| < N_MIN assessable logs            |       NULL | —           |
+
+Each row carries its own seed, so rows are independently reproducible. The
+drifting row **shares its seed** with `confidently-wrong` — same learner — so
+the amplification is verifiable by hand:
+`0.767 × (1 + DRIFT_BUMP × 0.8) = 0.920`.
 
 The underconfident → 0.00 row is the whole reason OCE is used instead of plain
 ECE. Any implementation where a humble-and-right learner scores > 0 is wrong.
 
----
+**Deliberate insensitivity to mild overconfidence.** The `mildly overconfident`
+row sits at 0.08 with a band including zero — `OCE_FLOOR` absorbs it by design.
+`risk_score` is a *confidently-wrong detector* (§1), not a graded overconfidence
+meter. Lowering the floor to make it graded would reintroduce the false
+positives on well-calibrated learners that §5 exists to prevent.
 
 ## 5. Tunable constants
 
